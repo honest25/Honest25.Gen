@@ -12,6 +12,14 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # Initialize FastAPI App
 app = FastAPI(title="Honest25.Gen API", description="Jarvis-like Autonomous AI Agent")
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For production, replace "*" with your actual frontend domain
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Define Request Model
 class ChatRequest(BaseModel):
