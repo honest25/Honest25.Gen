@@ -1,107 +1,84 @@
 import os
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain.agents import create_agent  # The new 2026 standard
 from langchain_community.utilities import SerpAPIWrapper
 from langchain.tools import Tool
 from langchain_community.tools.wikipedia.tool import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_experimental.tools import PythonREPLTool
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # Initialize FastAPI App
-app = FastAPI(title="Honest25.Gen API", description="Jarvis-like Autonomous AI Agent")
-from fastapi.middleware.cors import CORSMiddleware
+app = FastAPI(title="Honest25.Gen API")
 
+# Enable CORS for your frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For production, replace "*" with your actual frontend domain
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Define Request Model
 class ChatRequest(BaseModel):
     user_input: str
 
-# 1. Setup Tools
 def get_tools():
-    # SERPAPI Tool
     search = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
     search_tool = Tool(
         name="RealTimeSearch",
         func=search.run,
-        description="Useful for when you need to answer questions about current events or real-time information."
+        description="Search the web for current events and real-time info."
     )
-    
-    # Wikipedia Tool
     wiki_tool = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
-    
-    # Python REPL Tool (For calculations and code execution)
     python_tool = PythonREPLTool()
-    
     return [search_tool, wiki_tool, python_tool]
 
-# 2. Setup OpenRouter LLM & Agent
 def setup_agent():
-    # OpenRouter setup using LangChain's OpenAI wrapper
+    # Configuring for OpenRouter
     llm = ChatOpenAI(
-        model_name="nvidia/nemotron-3-nano-30b-a3b:free", # Uses OpenRouter's auto routing
+        model_name="anthropic/claude-3.5-sonnet", # Optimized for 2026 tool use
         openai_api_key=os.getenv("OPENROUTER_API_KEY"),
         openai_api_base="https://openrouter.ai/api/v1",
         default_headers={
-            "HTTP-Referer": "https://honest25gen-render-app.com", # Update with your Render URL later
-            "X-Title": "Honest25.Gen AI"
+            "HTTP-Referer": "https://honest25gen.render.com",
+            "X-Title": "Honest25.Gen"
         }
     )
 
     tools = get_tools()
 
-    # The System Prompt defining Honest25.Gen
-    system_prompt = """
-    You are Honest25.Gen – an advanced autonomous AI Personal Agent like Jarvis.
-    
-    Your Role:
-    - Manage user's tasks
-    - Perform real-time web search using SERPAPI
-    - Retrieve knowledge from Wikipedia
-    - Execute Python code when needed
-    - Think step-by-step before answering
-    - Act like a real executive assistant
-    
-    Rules:
-    - Always decide which tool to use before answering.
-    - If information is real-time → use RealTimeSearch tool.
-    - If general knowledge → use Wikipedia tool.
-    - If calculation, automation, or logic is needed → use Python tool.
-    - Be confident, professional, and proactive.
-    - Always address the user as "Sir".
-    """
+    # The NEW 2026 Agent Factory
+    # No more separate prompt objects or executors; it's all-in-one now.
+    agent = create_agent(
+        model=llm,
+        tools=tools,
+        system_prompt=(
+            "You are Honest25.Gen – an advanced autonomous AI Personal Agent like Jarvis. "
+            "Manage tasks, search real-time info, use Wikipedia, and run Python code. "
+            "Think step-by-step. Be professional and proactive. Always address the user as 'Sir'."
+        )
+    )
+    return agent
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
+# Global Agent Instance
+honest_agent = setup_agent()
 
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    return AgentExecutor(agent=agent, tools=tools, verbose=True)
-
-# Initialize Agent
-agent_executor = setup_agent()
-
-# 3. Create the API Endpoint
 @app.post("/chat")
-async def chat_with_agent(request: ChatRequest):
+async def chat(request: ChatRequest):
     try:
-        # Run the agent with the user's input
-        response = agent_executor.invoke({"input": request.user_input})
-        return {"response": response["output"]}
+        # In v1.x, we invoke with 'messages' to support modern chat history
+        response = honest_agent.invoke({
+            "messages": [{"role": "user", "content": request.user_input}]
+        })
+        
+        # Extract content from the last message in the returned list
+        return {"response": response["messages"][-1].content}
     except Exception as e:
+        print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Basic health check endpoint
 @app.get("/")
-def read_root():
-    return {"status": "Honest25.Gen Systems Online. Awaiting your command, Sir."}
+def status():
+    return {"status": "Honest25.Gen Online, Sir."}
