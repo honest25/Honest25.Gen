@@ -47,7 +47,7 @@ def get_tools():
 def setup_agent():
     # OpenRouter setup using LangChain's OpenAI wrapper
     llm = ChatOpenAI(
-        model_name="auto", # Uses OpenRouter's auto routing
+        model_name="nvidia/nemotron-3-nano-30b-a3b:free", # Uses OpenRouter's auto routing
         openai_api_key=os.getenv("OPENROUTER_API_KEY"),
         openai_api_base="https://openrouter.ai/api/v1",
         default_headers={
