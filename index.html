@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Honest25.Gen | Jarvis Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --glow-color: #00d4ff;
+            --bg-color: #0a0b10;
+            --panel-color: #161b22;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--glow-color);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 5px;
+            color: var(--glow-color);
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        #chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 10px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background: var(--glow-color);
+            color: black;
+            font-weight: bold;
+        }
+
+        .jarvis-message {
+            align-self: flex-start;
+            background: var(--panel-color);
+            border-left: 4px solid var(--glow-color);
+            color: #e0e0e0;
+        }
+
+        #input-area {
+            padding: 20px;
+            background: #000;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #333;
+        }
+
+        input {
+            flex: 1;
+            background: var(--panel-color);
+            border: 1px solid #333;
+            padding: 15px;
+            color: white;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--glow-color);
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--glow-color);
+            color: var(--glow-color);
+            padding: 0 25px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: var(--glow-color);
+            color: black;
+        }
+
+        /* Pulse Animation */
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: var(--glow-color);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 10px var(--glow-color);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 212, 255, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Honest25.Gen <span class="status-dot"></span></h1>
+    <p style="font-size: 0.7rem; color: #888;">SYSTEMS ONLINE | SIR</p>
+</header>
+
+<div id="chat-container">
+    <div class="message jarvis-message">Systems stabilized. How can I assist you today, Sir?</div>
+</div>
+
+<div id="input-area">
+    <input type="text" id="user-input" placeholder="Enter command..." onkeypress="if(event.key === 'Enter') sendMessage()">
+    <button onclick="sendMessage()">EXECUTE</button>
+</div>
+
+<script>
+    // REPLACE THIS WITH YOUR ACTUAL RENDER URL
+    const API_URL = "https://your-app-name.onrender.com/chat";
+
+    async function sendMessage() {
+        const inputField = document.getElementById('user-input');
+        const chatContainer = document.getElementById('chat-container');
+        const text = inputField.value.trim();
+
+        if (!text) return;
+
+        // Append User Message
+        appendMessage(text, 'user-message');
+        inputField.value = '';
+
+        // Show Loading State
+        const loadingDiv = appendMessage("Processing...", 'jarvis-message');
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_input: text })
+            });
+
+            const data = await response.json();
+            loadingDiv.innerText = data.response;
+        } catch (error) {
+            loadingDiv.innerText = "Error connecting to systems, Sir. Please check the backend.";
+            console.error(error);
+        }
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function appendMessage(text, className) {
+        const div = document.createElement('div');
+        div.className = `message ${className}`;
+        div.innerText = text;
+        document.getElementById('chat-container').appendChild(div);
+        return div;
+    }
+</script>
+
+</body>
+</html>
